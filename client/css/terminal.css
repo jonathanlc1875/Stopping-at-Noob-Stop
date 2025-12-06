@@ -1,0 +1,12 @@
+section {
+    position: absolute;
+    float: left;
+    width: 20%;
+    height: 100%;
+}
+
+html {
+    float: right;
+    width: 80%;
+    height: 100%;
+}
