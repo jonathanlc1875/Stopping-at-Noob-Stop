@@ -2,24 +2,28 @@
 <html>
     <link rel="stylesheet" href="../css/terminal.css">
     <script src = "../js/terminal.js" defer></script>
-    <title id = "title">Noob Stop</title>
+    <title id = "title">Goob Stop</title>
     <body>
         <aside id = "interface">
-            <p id = "log">
-                placeholder text
-            </p>
-            <p id = "choices">
-                1: punch the air<br>
-                2: try to leave<br>
-                3: give up
-            </p>
+            <p id = "log">Goob Stop</p>
+            <p>Options:</p>
+            <ol id = "choices">
+                <li>punch the air</li>
+                <li>try to leave</li>
+                <li>give up</li>
+            </ol>
+            <br>
             <div id = "inputs">
                 <input type = "text" id = "input" placeholder = "Input Command">
                 <input type = "submit" id = "submit">
             </div>
         </aside>
         <section id = "background">
-            <img src = "../backgrounds/base.png" id = "background" alt = "Looks a lot like last year's Thanksgiving.">
+            <img src = "../backgrounds/base.png" id = "backgroundImage" alt = "Looks a lot like last year's Thanksgiving.">
         </section>
+
+        <audio id="bg-music" autoplay loop>
+            <source src="../audio/theme of a shop that sells things you dont want.mp3" type="audio/mpeg">
+        </audio>
     </body>
 </html>
