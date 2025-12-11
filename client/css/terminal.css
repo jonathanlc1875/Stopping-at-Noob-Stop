@@ -32,6 +32,12 @@ p#log {
     background-color: darksalmon;
 }
 
+audio#bg-music {
+    -webkit-media-controls {
+        display: none;
+    }
+}
+
 div#inputs {
     background-color: blue;
     width: 100%;

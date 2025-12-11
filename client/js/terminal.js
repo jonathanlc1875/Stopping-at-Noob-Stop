@@ -10,15 +10,32 @@ var previousPage = 0;
 var heldItems = [];
 var seenIntro = false;
 
+let inputResolver = null; // holds the resolver for the current wait
+
+function waitForUserInput() {
+    return new Promise((resolve) => {
+        inputResolver = resolve; // store resolver until user submits
+    });
+}
+
+async function handleSubmit() {
+    const result = await submitInput(); // get the actual number
+    if (inputResolver) {
+        inputResolver(result); // resolve the waiting promise
+        inputResolver = null;  // reset so we don’t resolve twice
+    }
+}
+
+// Attach listeners ONCE at startup
 inputBox.addEventListener("keydown", (event) => {
-    if(event.key === 'Enter') {
-        event.preventDefault;
-        submitInput();
+    if (event.key === "Enter") {
+        event.preventDefault();
+        handleSubmit();
     }
 });
 
 submitButton.addEventListener("click", () => {
-    submitInput();
+    handleSubmit();
 });
 
 //each scene should always end in a choice 
@@ -28,6 +45,11 @@ async function initializeScene(sceneNumber) {
     messageLog.innerText = '';
     previousPage = pageNumber;
     pageNumber = sceneNumber;
+
+    console.log('new page is: ',pageNumber);
+    console.log('last page was: ',previousPage);
+
+    let result = -1;
     switch(sceneNumber) {
         case 0: //Goob Stop Entrance
             background.src = "../backgrounds/base.png";
@@ -63,6 +85,24 @@ async function initializeScene(sceneNumber) {
                 'Go to the hallway',
                 'Leave'
             ]);
+            while(result === -1 || result === null) {
+                console.log('awaiting user input');
+                result = await waitForUserInput();
+                console.log('Result is: ', result);
+            };
+            switch(result) {
+                case 1: //Register
+                    return initializeScene(1);
+                case 2: //Aisles
+                    return initializeScene(2);
+                case 3: //Hallway
+                    return initializeScene(3);
+                case 4: //Leave
+                    //message about leaving
+                    return initializeScene(0);
+                default:
+                    return initializeScene(-1)
+            }
             break;
         case 1: //Register
             background.src = "../backgrounds/register.png";
@@ -75,6 +115,29 @@ async function initializeScene(sceneNumber) {
                 `Purchase held items (holding ${heldItems.length} items)`,
                 'Go back'
             ]);
+            while(result === -1) {
+                console.log('awaiting user input');
+                result = await waitForUserInput();
+                console.log('Result is: ', result);
+            };
+            switch(result) {
+                case 1: //Wall of Items
+                    return initializeScene(4);
+                    break;
+                case 2: //Cashier
+                    return initializeScene(5);
+                    break;
+                case 3: //Purchase
+                    //attempt purchase and go back
+                    return initializeScene(1);
+                    break;
+                case 4: //Goob Stop Entrance
+                    return initializeScene(0);
+                    break;
+                default:
+                    return initializeScene(-1);
+                    break;
+            }
             break;
         default:
             pageNumber = -1;
@@ -83,6 +146,18 @@ async function initializeScene(sceneNumber) {
             setChoices([
                 'Wake up'
             ]);
+            while(result === -1) {
+                result = await waitForUserInput();
+                console.log('result is: ',result);
+            };
+            switch(result) {
+                case 1: //Goob Stop Entrance
+                    return initializeScene(0);
+                    break;
+                default: //The Void
+                    return initializeScene(-1);
+                    break;
+            }
             break;
     }
 }
@@ -101,23 +176,41 @@ function tab() {
 
 async function submitInput() {
     const inputCommand = inputBox.value;
+    let inputNumber = Number.parseFloat(inputCommand);
     if(inputCommand.trim() === "")
-        return;
+        return -1;
     inputBox.value = "";
-    console.log(inputCommand);
+    console.log('command is: ',inputCommand);
+    console.log('number is: ',inputNumber);
     //await printMessage(inputCommand, 0);
-    await handleCommand(inputCommand);
+
+    if(Number.isInteger(inputNumber) && inputNumber > 0 && inputNumber <= currentChoices.length)
+        await printMessage(getChoice(inputNumber), 0);
+    else if(isFloat(inputNumber)) {
+        await printMessage(`Make a decision.`,-1);
+        inputNumber = -1;
+    }
+    else {
+        await printMessage(`Invalid response. Choose a number 1 through ${currentChoices.length}.`,-1);
+        inputNumber = -1;
+    }
+
+    messageLog.scrollTo({
+        top: messageLog.scrollHeight,
+        behavior: "smooth"
+    });
+
+    console.log('returning result: ',inputNumber);
+    return inputNumber;
 }
 
-async function handleCommand(inputCommand) {
+/*async function handleCommand(inputCommand) {
     const inputNumber = Number.parseFloat(inputCommand);
     console.log(inputCommand);
     console.log(inputNumber);
 
-    if(Number.isInteger(inputNumber) && inputNumber > 0 && inputNumber <= currentChoices.length) {
+    if(Number.isInteger(inputNumber) && inputNumber > 0 && inputNumber <= currentChoices.length)
         await printMessage(getChoice(inputNumber), 0);
-        makeChoice(inputNumber);
-    }
     else if(isFloat(inputNumber))
         await printMessage(`Make a decision.`,-1);
     else
@@ -127,10 +220,10 @@ async function handleCommand(inputCommand) {
         top: messageLog.scrollHeight,
         behavior: "smooth"
     });
-}
+}*/
 
 async function printMessage(message, type = 1) {
-    console.log(message);
+    //console.log(message);
     if(messageLog.innerHTML !== "") {
         messageLog.innerHTML += "<br>";
     }
@@ -159,58 +252,12 @@ function getChoice(index) {
     return currentChoices[index-1];
 }
 
-function makeChoice(index) {
-    //determine what happens next based on:
-    //page number (where, who, what)
-    //index (the option the player chose)
-    //[other variables] (conditions the player may or may not meet)
-    console.log('You are on page ',pageNumber);
-    console.log('Your choice was ',index);
-    switch(pageNumber) {
-        case 0: //Goob Stop Entrance
-            switch(index) {
-                case 1: //Go to the register
-                    initializeScene(1);
-                    break;
-                case 2: //Check out the groceries
-                    initializeScene(2);
-                    break;
-                case 3: //Go to the hallway
-                    initializeScene(3);
-                    break;
-                case 4: //Leave
-                    initializeScene(4);
-                    break;
-            }
-            break;
-        case 1: //Register
-            switch(index) {
-                case 1: //Check out wall of items
-                    initializeScene(5);
-                    break;
-                case 2: //Talk to the cashier
-                    initializeScene(6);
-                    break;
-                case 3: //Purchase held items
-                    initializeScene(7);
-                    break;
-                case 4: //Go back
-                    initializeScene(0);
-                    break;
-            }
-            break;
-        case -1: //The Void
-            //back to entrance no matter what
-            initializeScene(0);
-            break;
-    }
-}
-
 audio.volume = 0.05;
 audio.play().catch(() => {
     document.body.addEventListener('click', () => {
-        audio.play();
-    }, {once: true});
+        if(audio.paused)
+            audio.play();
+    });
 });
 
 initializeScene(pageNumber);
