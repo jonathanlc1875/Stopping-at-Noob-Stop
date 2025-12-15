@@ -9,16 +9,23 @@ var pageNumber = 0;
 var previousPage = 0;
 var heldItems = [];
 var seenIntro = false;
+var printingMessage = false;
 
 let inputResolver = null; // holds the resolver for the current wait
+let characterDelay = 50;
 
+//written by AI
 function waitForUserInput() {
     return new Promise((resolve) => {
         inputResolver = resolve; // store resolver until user submits
     });
 }
 
+//written by AI
 async function handleSubmit() {
+    if(printingMessage)
+        return;
+
     const result = await submitInput(); // get the actual number
     if (inputResolver) {
         inputResolver(result); // resolve the waiting promise
@@ -38,11 +45,39 @@ submitButton.addEventListener("click", () => {
     handleSubmit();
 });
 
+document.addEventListener("keydown", (event) => {
+    if (document.activeElement === inputBox)
+        return;
+    
+    if (event.shiftKey) {
+        console.log('shift is being held');
+        characterDelay = 10;
+    }
+    else if (event.code === 'Space' || event.key === " ") {
+        console.log('space was pressed');
+        characterDelay = 0;
+    }
+});
+
+document.addEventListener("keyup", (event) => {
+    if (event.key === 'Shift') {
+        console.log('shift stopped being being held');
+        characterDelay = 50;
+    }
+});
+
 //each scene should always end in a choice 
 //even if there is only one choice and it is to continue
 async function initializeScene(sceneNumber) {
+    if(seenIntro) {
+        printingMessage = true;
+        await sleep(1000);
+        printingMessage = false;
+    }
+
     messageLog.innerHTML = '';
     messageLog.innerText = '';
+    setChoices(['Wait']);
     previousPage = pageNumber;
     pageNumber = sceneNumber;
 
@@ -63,7 +98,7 @@ async function initializeScene(sceneNumber) {
                     Behind the resting cashier is a wall of different weapons and items ranging from a rocket launcher, to... a mattress.
                     ${newParagraph()}Besides the cashier and his register, there are a few aisles and refrigerators filled with various grocery products.
                     You also see a hallway in the back of the store that seems to lead to more stores.
-                    ${newParagraph()}* (That's strange... I could've sworn this place was smaller from the outside)
+                    ${newParagraph()}> (That's strange... I could've sworn this place was smaller from the outside)
                     ${newParagraph()}The doors close behind you. As they normally do when you let go of them.
                     Your goal is simple:
                     Get some gear and leave... and maybe get a snack or something.
@@ -100,7 +135,7 @@ async function initializeScene(sceneNumber) {
                 case 4: //Leave
                     //message about leaving
                     return initializeScene(0);
-                default:
+                default: //The Void
                     return initializeScene(-1)
             }
             break;
@@ -134,12 +169,12 @@ async function initializeScene(sceneNumber) {
                 case 4: //Goob Stop Entrance
                     return initializeScene(0);
                     break;
-                default:
+                default: //The Void
                     return initializeScene(-1);
                     break;
             }
             break;
-        default:
+        default: //The Void
             pageNumber = -1;
             await printMessage(`${tab()}You're not sure how, but you find yourself in the void.
                 You are enveloped in darkness.`);
@@ -171,7 +206,7 @@ function newLine() {
 }
 
 function tab() {
-    return `&nbsp&nbsp&nbsp&nbsp`;
+    return `&nbsp;&nbsp;&nbsp;&nbsp;`;
 }
 
 async function submitInput() {
@@ -222,18 +257,74 @@ async function submitInput() {
     });
 }*/
 
+//helped by AI (but now I feel like I should've just figured out tag parsing by myself ._. it's not that hard)
 async function printMessage(message, type = 1) {
+    const messageArray = [...message];
+    printingMessage = true;
+    
     //console.log(message);
     if(messageLog.innerHTML !== "") {
         messageLog.innerHTML += "<br>";
     }
 
     if(type === 0) //player
-        messageLog.innerHTML += `\> ${message}<br>`;
+        messageLog.innerHTML += `> `;
     else if(type === -1) //entity
-        messageLog.innerHTML += `\>\>\> ${message}<br>`;
+        messageLog.innerHTML += `>>> `;
     else if(type === 1) //server
-        messageLog.innerHTML += `${message}<br>`;
+        messageLog.innerHTML += ``;
+
+    let inTag = false;
+    let inEntity = false;
+    let tagBuffer = "";
+    let entityBuffer = "";
+    
+    for(let i = 0; i < messageArray.length; i++) {
+        let char = `${messageArray[i]}`;
+
+        if(char === "<") {
+            inTag = true;
+            tagBuffer = "<";
+        }
+        else if(char === "&") {
+            inEntity = true;
+            entityBuffer = "&";
+        }
+        else if(inTag) {
+            tagBuffer += char;
+            if(char === ">") {
+                messageLog.innerHTML += tagBuffer;
+                inTag = false;
+                tagBuffer = "";
+            }
+        }
+        else if(inEntity) {
+            entityBuffer += char;
+            if(char === ";") {
+                messageLog.innerHTML += entityBuffer;
+                inEntity = false;
+                entityBuffer = "";
+            }
+        }
+        else {
+            messageLog.innerHTML += char;
+            if(characterDelay > 0)
+                await sleep(characterDelay);
+            messageLog.scrollTo({
+                top: messageLog.scrollHeight,
+                behavior: "smooth"
+            });
+        }
+    }
+
+    messageLog.innerHTML += `<br>`
+    printingMessage = false;
+    if (characterDelay === 0)
+        characterDelay = 50;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function isFloat(number) {
