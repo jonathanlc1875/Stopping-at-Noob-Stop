@@ -9,8 +9,13 @@ var currentChoices = [];
 var pageNumber = 0;
 var previousPage = 0;
 var heldItems = [];
+var inventory = [];
+var money = 0;
 var seenIntro = false;
 var printingMessage = false;
+
+//tix collected booleans
+var collectedT1Aisle = false;
 
 let inputResolver = null; // holds the resolver for the current wait
 let characterDelay = 50;
@@ -47,6 +52,13 @@ submitButton.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+    if (event.key === 'Escape') {
+        if(document.activeElement && document.activeElement !== document.body) {
+            event.preventDefault();
+            document.activeElement.blur();
+        }
+    }
+    
     if (document.activeElement === inputBox)
         return;
     
@@ -57,6 +69,10 @@ document.addEventListener("keydown", (event) => {
     else if (event.code === 'Space' || event.key === " ") {
         console.log('space was pressed');
         characterDelay = 0;
+    }
+    else if (event.key === 'Tab') {
+        event.preventDefault();
+        inputBox.focus();
     }
 });
 
@@ -76,9 +92,19 @@ async function initializeScene(sceneNumber) {
         printingMessage = false;
     }
 
+    Array.from(background.children).forEach((child) => {
+        if(child.className === 'item')
+            background.removeChild(child);
+    })
+
     messageLog.innerHTML = '';
     messageLog.innerText = '';
-    setChoices(['Wait']);
+    setChoices([
+        'Press Space to skip text.',
+        'Hold Shift to speed up text.',
+        'Press Tab to select the input box.',
+        'Press Escape to unselect.'
+    ]);
     previousPage = pageNumber;
     pageNumber = sceneNumber;
 
@@ -94,9 +120,8 @@ async function initializeScene(sceneNumber) {
                     Ambient music quietly plays from the speakers.
                     The cashier, who was sleeping before you walked through the doors, greets you unenthusiatically:
                     ${newParagraph()}* Hello and welcome to Goob Stop. Home to every good you could ever need.
-                    ${newParagraph()}He lays his head back down on the counter.
-                    You noticed that he emphasized the words 'goob' and 'good.' Hmm...
-                    Behind the resting cashier is a wall of different weapons and items ranging from a rocket launcher, to... a mattress.
+                    ${newParagraph()}You noticed that he emphasized the words 'goob' and 'good.' Hmm...
+                    Behind the cashier is a wall of different weapons and items ranging from a rocket launcher, to... a mattress.
                     ${newParagraph()}Besides the cashier and his register, there are a few aisles and refrigerators filled with various grocery products.
                     You also see a hallway in the back of the store that seems to lead to more stores.
                     ${newParagraph()}> (That's strange... I could've sworn this place was smaller from the outside)
@@ -109,11 +134,11 @@ async function initializeScene(sceneNumber) {
             else if(previousPage === 1) {
                 await printMessage(`${tab()}You walk back to the center of the room.
                     ${newParagraph()}* Oh. Ok.
-                    ${newParagraph()}The cashier goes back to sleeping.`,1);
+                    ${newParagraph()}What shall you do?`,1);
             }
             else {
                 await printMessage(`${tab()}You stand in the main room of the store.
-                    The cashier is still sleeping.`,1)
+                    What shall you do?`,1)
             }
             setChoices([
                 'Go to the register',
@@ -178,7 +203,13 @@ async function initializeScene(sceneNumber) {
         case 2: //Aisles
             backgroundImage.src = "../images/backgrounds/aisles.png";
             //set up items
-            spawnItem('plush_item_shelf', {x: 694, y: 102});
+            if(!heldItems.includes('Plush') && !inventory.includes('Plush')) {
+                console.log(heldItems);
+                console.log(inventory);
+                spawnItem('plush_item_shelf', {x: 694, y: 102});
+            }
+            if(!collectedT1Aisle)
+                spawnItem('tix1_aisle', {x:458, y: 408});
             await printMessage(`${tab()}You walk over to the aisles and take a look at what's available.
                 You can see the cashier in the background.
                 He's awake... barely.`,1);
@@ -193,7 +224,8 @@ async function initializeScene(sceneNumber) {
             };
             switch(result) {
                 case 1: //Put away held items
-                    //do stuff here when items are functional
+                    heldItems = [];
+                    console.log(heldItems);
                     characterDelay = 0;
                     return initializeScene(2);
                     break;
@@ -350,7 +382,7 @@ async function printMessage(message, type = 1) {
 
     messageLog.innerHTML += `<br>`
     printingMessage = false;
-    if (characterDelay === 0)
+    if (characterDelay !== 50)
         characterDelay = 50;
 }
 
@@ -378,6 +410,7 @@ function spawnItem(itemName, position) {
     const item = document.createElement('img');
     item.src = `../images/items/${itemName}.png`;
     item.className = 'item';
+    item.id = itemName;
 
     item.style.position = 'absolute';
     item.style.left = `${position.x}px`;   // fixed pixel X
@@ -389,6 +422,21 @@ function spawnItem(itemName, position) {
 background.addEventListener('click', (event => {
     if(event.target.classList.contains('item')) {
         event.target.remove();
+
+        switch(event.target.id) {
+            case 'plush_item_shelf':
+                heldItems.push('Plush');
+                initializeScene(2);
+                characterDelay = 0;
+                break;
+            case 'tix1_aisle':
+                money += 1;
+                collectedT1Aisle = true;
+                break;
+            default:
+                console.log('unknown item: ',event.target.name);
+                break;
+        }
     }
 }));
 
