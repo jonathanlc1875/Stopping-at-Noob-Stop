@@ -3,7 +3,8 @@ const inputBox = document.getElementById("input");
 const submitButton = document.getElementById("submit");
 const choices = document.getElementById("choices");
 const audio = document.getElementById("bg-music");
-const background = document.getElementById("backgroundImage");
+const background = document.getElementById("background");
+const backgroundImage = document.getElementById("backgroundImage");
 var currentChoices = [];
 var pageNumber = 0;
 var previousPage = 0;
@@ -87,7 +88,7 @@ async function initializeScene(sceneNumber) {
     let result = -1;
     switch(sceneNumber) {
         case 0: //Goob Stop Entrance
-            background.src = "../backgrounds/base.png";
+            backgroundImage.src = "../images/backgrounds/base.png";
             if(!seenIntro) {
                 await printMessage(`${tab()}You open the doors and step inside the store.
                     Ambient music quietly plays from the speakers.
@@ -140,7 +141,7 @@ async function initializeScene(sceneNumber) {
             }
             break;
         case 1: //Register
-            background.src = "../backgrounds/register.png";
+            backgroundImage.src = "../images/backgrounds/register.png";
             await printMessage(`${tab()}You walk over to the cash register.
                 The cashier lifts his head as you approach and forces a weak smile.
                 ${newParagraph()}* Hello sir, how can I help you today?`,1);
@@ -167,6 +168,36 @@ async function initializeScene(sceneNumber) {
                     return initializeScene(1);
                     break;
                 case 4: //Goob Stop Entrance
+                    return initializeScene(0);
+                    break;
+                default: //The Void
+                    return initializeScene(-1);
+                    break;
+            }
+            break;
+        case 2: //Aisles
+            backgroundImage.src = "../images/backgrounds/aisles.png";
+            //set up items
+            spawnItem('plush_item_shelf', {x: 694, y: 102});
+            await printMessage(`${tab()}You walk over to the aisles and take a look at what's available.
+                You can see the cashier in the background.
+                He's awake... barely.`,1);
+            setChoices([
+                `Put away held items (holding ${heldItems.length} items)`,
+                'Go back'
+            ]);
+            while(result === -1) {
+                console.log('awaiting user input');
+                result = await waitForUserInput();
+                console.log('Result is: ', result);
+            };
+            switch(result) {
+                case 1: //Put away held items
+                    //do stuff here when items are functional
+                    characterDelay = 0;
+                    return initializeScene(2);
+                    break;
+                case 2: //Goob Stop Entrance
                     return initializeScene(0);
                     break;
                 default: //The Void
@@ -342,6 +373,24 @@ function setChoices(newChoices) {
 function getChoice(index) {
     return currentChoices[index-1];
 }
+
+function spawnItem(itemName, position) {
+    const item = document.createElement('img');
+    item.src = `../images/items/${itemName}.png`;
+    item.className = 'item';
+
+    item.style.position = 'absolute';
+    item.style.left = `${position.x}px`;   // fixed pixel X
+    item.style.top = `${position.y}px`;    // fixed pixel Y
+
+    background.appendChild(item);
+}
+
+background.addEventListener('click', (event => {
+    if(event.target.classList.contains('item')) {
+        event.target.remove();
+    }
+}));
 
 audio.volume = 0.05;
 audio.play().catch(() => {
