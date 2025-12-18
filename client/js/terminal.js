@@ -1,18 +1,28 @@
+//HTML elements
 const messageLog = document.getElementById("log");
 const inputBox = document.getElementById("input");
 const submitButton = document.getElementById("submit");
 const choices = document.getElementById("choices");
+const stats = document.getElementById("stats");
 const audio = document.getElementById("bg-music");
 const background = document.getElementById("background");
 const backgroundImage = document.getElementById("backgroundImage");
+//logic variables
 var currentChoices = [];
 var pageNumber = 0;
 var previousPage = 0;
+var printingMessage = false;
+//player stats
+var health = 20;
+var maxHealth = 20;
+var stamina = 100;
+var maxStamina = 100;
+var money = 0;
 var heldItems = [];
 var inventory = [];
-var money = 0;
+var notes = [];
+//story variables
 var seenIntro = false;
-var printingMessage = false;
 
 //tix collected booleans
 var collectedT1Aisle = false;
@@ -126,7 +136,7 @@ async function initializeScene(sceneNumber) {
                     You also see a hallway in the back of the store that seems to lead to more stores.
                     ${newParagraph()}> (That's strange... I could've sworn this place was smaller from the outside)
                     ${newParagraph()}The doors close behind you. As they normally do when you let go of them.
-                    Your goal is simple:
+                    ${newParagraph()}Your goal is simple:
                     Get some gear and leave... and maybe get a snack or something.
                     ${newParagraph()}You look around and consider your options...`,1);
                     seenIntro = true
@@ -167,9 +177,12 @@ async function initializeScene(sceneNumber) {
             break;
         case 1: //Register
             backgroundImage.src = "../images/backgrounds/register.png";
-            await printMessage(`${tab()}You walk over to the cash register.
-                The cashier lifts his head as you approach and forces a weak smile.
-                ${newParagraph()}* Hello sir, how can I help you today?`,1);
+            if(previousPage === 1)
+                await printMessage(`${tab()}He looks really tired.`)
+            else
+                await printMessage(`${tab()}You walk over to the cash register.
+                    The cashier lifts his head as you approach and forces a weak smile.
+                    ${newParagraph()}* Hello sir, how can I help you today?`,1);
             setChoices([
                 'Inspect the wall of items',
                 'Talk to the cashier',
@@ -190,6 +203,51 @@ async function initializeScene(sceneNumber) {
                     break;
                 case 3: //Purchase
                     //attempt purchase and go back
+                    let purchaseInfo = '';
+                    let purchaseTotal = 0;
+                    heldItems.forEach((item) => {
+                        switch(item) {
+                            case 'Plush':
+                                purchaseInfo += '<br>- Strangely familiar plush toy: $1<br>';
+                                purchaseTotal += 1;
+                                break;
+                        }
+                    });
+
+                    await printMessage(`${tab()}* Alright sir, here's the bill: 
+                        ${purchaseInfo}
+                        So, that brings you to a total of $${purchaseTotal}`,1);
+                    setChoices([
+                        'Confirm Purchase',
+                        'Nevermind'
+                    ]);
+                    result = -1;
+                    while(result === -1) {
+                        console.log('awaiting user input');
+                        result = await waitForUserInput();
+                        console.log('Result is: ', result);
+                        if(result === -1) { //invalid input
+                            await printMessage(`${tab()}* Uh... Say that again?`);
+                        }
+
+                        switch(result) {
+                            case 1: //accept
+                                if(money >= purchaseTotal) { //enough money
+                                    await printMessage(`${tab()}* Good choice.`,1);
+                                    money -= purchaseTotal;
+                                    inventory.push(...heldItems);
+                                    heldItems = [];
+                                    reloadInformation();
+                                }
+                                else {
+                                    await printMessage(`${tab()}* Sorry, but I don't think that's enough.`,1);
+                                }
+                                break;
+                            case 2: //decline
+                                await printMessage(`${tab()}* Understood.`);
+                                break;
+                        }
+                    };
                     return initializeScene(1);
                     break;
                 case 4: //Goob Stop Entrance
@@ -225,6 +283,7 @@ async function initializeScene(sceneNumber) {
             switch(result) {
                 case 1: //Put away held items
                     heldItems = [];
+                    reloadInformation();
                     console.log(heldItems);
                     characterDelay = 0;
                     return initializeScene(2);
@@ -386,6 +445,20 @@ async function printMessage(message, type = 1) {
         characterDelay = 50;
 }
 
+async function reloadInformation() {
+    let healthInfo = `Health: ${health}/${maxHealth}<br>`;
+    let staminaInfo = `Stamina: ${stamina}/${maxStamina}<br>`;
+    let moneyInfo = `Money: $${money}<br>`;
+    let inventoryInfo = '';
+    if(inventory.length > 0)
+        inventoryInfo = `Inventory: ${inventory}<br>`;
+    let heldItemsInfo = '';
+    if(heldItems.length > 0)
+        heldItemsInfo = `Held Items: ${heldItems}<br>`
+    //let notesInfo = `Notes: ${notes}`;
+    stats.innerHTML = healthInfo + staminaInfo + moneyInfo + inventoryInfo + heldItemsInfo;
+}
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -426,8 +499,6 @@ background.addEventListener('click', (event => {
         switch(event.target.id) {
             case 'plush_item_shelf':
                 heldItems.push('Plush');
-                initializeScene(2);
-                characterDelay = 0;
                 break;
             case 'tix1_aisle':
                 money += 1;
@@ -437,6 +508,7 @@ background.addEventListener('click', (event => {
                 console.log('unknown item: ',event.target.name);
                 break;
         }
+        reloadInformation();
     }
 }));
 
@@ -449,3 +521,4 @@ audio.play().catch(() => {
 });
 
 initializeScene(pageNumber);
+reloadInformation();

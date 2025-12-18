@@ -32,6 +32,13 @@ p#log {
     background-color: darksalmon;
 }
 
+p#info {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: darksalmon;
+}
+
 audio#bg-music {
     -webkit-media-controls {
         display: none;
